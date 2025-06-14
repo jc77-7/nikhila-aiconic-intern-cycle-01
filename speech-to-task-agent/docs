@@ -1,0 +1,64 @@
+# Project Architecture
+
+## 🔊 1. Input Source: `sample.wav`
+This is the primary input to the system. It's an audio file containing spoken sentences describing various personal activities.
+
+## 2. Speech-to-Text (STT) Module
+**Component**: faster-whisper library (utilized within speech_transcriber.py and directly in speech_to_task_agent.py).
+**Purpose**: To accurately convert the audio waveform from sample.wav into a plain text transcript.
+
+**Process**:
+The WhisperModel is initialized with a specified model size (e.g., "base") and computation settings (e.g.,   device="cpu", compute_type="int8" for optimized local performance).
+
+The audio file (sample.wav) is fed into the model's transcribe method.
+
+The model processes the audio and outputs a sequence of text segments.
+
+These segments are concatenated to form a complete, cohesive transcript.
+
+**Output**: A raw text string representing the transcribed speech. (In speech_transcriber.py, this is saved to transcript.txt; in speech_to_task_agent.py, it's passed directly to the next stage.)
+
+## 3.Task Categorization (LLM Integration)
+**Components**: langchain, langchain_ollama, and a local LLM (e.g., Mistral) served via Ollama (utilized within task_categorizer.py and directly in speech_to_task_agent.py).
+**Purpose**: To take the raw text transcript, identify individual activities, and assign them to predefined categories.
+**Process**:
+**LLM Initialization**: An OllamaLLM instance is created, connecting to the locally running Ollama server (OLLAMA_BASE_URL) and specifying the desired LLM (OLLAMA_MODEL, e.g., "mistral").
+
+**Prompt Engineering**: A PromptTemplate is used to construct a clear instruction for the LLM. This prompt guides the LLM to:
+
+Identify distinct activities from the input text.
+
+Categorize each activity into one of a specific set of predefined categories ("Study", "Meals", "Play", "Chores", "Hygiene", "Exercise", "Other").
+
+Format the output strictly as a JSON array of objects, each containing a task and a category field.
+
+**Chain Execution**: LangChain is used to create a simple Runnable chain: PromptTemplate -> OllamaLLM.
+
+**Inference**: The transcribed text is passed to the LLM via this chain.
+
+**Output Parsing**: The LLM's raw text response (expected to be JSON) is parsed into a Python list of dictionaries. Error handling is included to catch invalid JSON.
+
+**Output**: A JSON array of objects, where each object represents a categorized task (e.g., [{"task": "cook lunch", "category": "Meals"}]). (In task_categorizer.py, this is saved to categorized_tasks.json; in speech_to_task_agent.py, it's saved to output.json.)
+
+## 4. Orchestration (speech_to_task_agent.py)
+The speech_to_task_agent.py file acts as the central orchestrator, tying together the transcription and categorization modules into a single, cohesive workflow. It defines the main execution path:
+
+Loads environment variables.
+
+Calls the transcription function.
+
+Passes the transcript to the categorization function.
+
+Prints the final categorized output and saves it to a JSON file.
+
+## Data Flow Diagram
++----------------+       +-------------------+       +------------------------+       +-----------------+
+|   sample.wav   | ----> | Speech-to-Text    | ----> | LLM (Ollama + LangChain) | ----> |  output.json    |
+| (Audio Input)  |       | (faster-whisper)  |       | (Task Categorization)  |       | (Structured JSON)|
++----------------+       +-------------------+       +------------------------+       +-----------------+
+        ^                                                            |
+        |                                                            v
+        |                                                 Environment Variables (.env)
+        |                                                            |
+        +------------------------------------------------------------+
+                                (Orchestrated by speech_to_task_agent.py)
