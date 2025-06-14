@@ -8,6 +8,8 @@ from langchain_core.tools import tool
 from langchain_community.llms import Together
 
 load_dotenv()
+print("TOGETHER_API_KEY:", os.getenv("TOGETHER_API_KEY"))
+
 
 class OpenWeatherMapTool(Tool):
     def __init__(self):
@@ -37,7 +39,7 @@ class OpenWeatherMapTool(Tool):
             weather = data["weather"][0]
             wind = data["wind"]
             sys_info = data["sys"]
-            city_name = data["name"]
+            city_name = data["name"] #placed an error
             clouds = data["clouds"]["all"]
 
             sunrise_ts = sys_info["sunrise"]
